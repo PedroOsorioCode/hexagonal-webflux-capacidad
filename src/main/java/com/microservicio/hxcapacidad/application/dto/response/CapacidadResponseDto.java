@@ -15,4 +15,11 @@ public class CapacidadResponseDto {
     private String descripcion;
     private int cantidadTecnologia;
     private List<TecnologiaResponseDto> listaTecnologias;
+
+    public CapacidadResponseDto(Long id, String nombre, String descripcion, int cantidadTecnologia) {
+        this.id = id;
+        this.nombre = nombre;
+        this.descripcion = descripcion;
+        this.cantidadTecnologia = cantidadTecnologia;
+    }
 }

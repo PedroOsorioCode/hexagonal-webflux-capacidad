@@ -2,9 +2,11 @@ package com.microservicio.hxcapacidad.application.service.impl;
 
 import com.microservicio.hxcapacidad.application.common.ConstantesAplicacion;
 import com.microservicio.hxcapacidad.application.common.MensajeError;
+import com.microservicio.hxcapacidad.application.dto.request.CapacidadFilterRequestDto;
 import com.microservicio.hxcapacidad.application.dto.request.CapacidadRequestDto;
 import com.microservicio.hxcapacidad.application.dto.request.CapacidadTecnologiaRequestDto;
 import com.microservicio.hxcapacidad.application.dto.request.TecnologiaRequestDto;
+import com.microservicio.hxcapacidad.application.dto.response.CapacidadPaginacionResponseDto;
 import com.microservicio.hxcapacidad.application.dto.response.CapacidadResponseDto;
 import com.microservicio.hxcapacidad.application.dto.response.TecnologiaResponseDto;
 import com.microservicio.hxcapacidad.application.mapper.ICapacidadModelMapper;
@@ -18,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -66,6 +69,68 @@ public class CapacidadService implements ICapacidadService {
                         return Mono.error(new RuntimeException("No se pudo relacionar capacidad con tecnología", e));
                     });
             }));
+    }
+
+    @Override
+    public Mono<CapacidadPaginacionResponseDto<CapacidadResponseDto>>
+    consultarTodosPaginado(Mono<CapacidadFilterRequestDto> capacidadFilterRequestDTO) {
+        return capacidadFilterRequestDTO.flatMap(filter -> capacidadUseCasePort.obtenerTodos()
+            .switchIfEmpty(Mono.empty())
+            .map(capacidad ->
+                    new CapacidadResponseDto(capacidad.getId(), capacidad.getNombre(), capacidad.getDescripcion(), capacidad.getCantidadTecnologia()))
+            .sort((getComparator(filter)))
+            .collectList()
+            .flatMap(listaCapacidad -> {
+                // Calcular la paginación
+                int skip = filter.getNumeroPagina() * filter.getTamanoPorPagina();
+                List<CapacidadResponseDto> paginaCapacidades = listaCapacidad.stream()
+                        .skip(skip)
+                        .limit(filter.getTamanoPorPagina())
+                        .toList();
+
+                List<Long> idListaCapacidad = paginaCapacidades.stream()
+                        .map(CapacidadResponseDto::getId)
+                        .toList();
+
+                return webClient.post()
+                        .uri("/consultar-relacion-capacidad-tecnologia")
+                        .bodyValue(idListaCapacidad)
+                        .retrieve()
+                        .bodyToFlux(CapacidadResponseDto.class)
+                        .collectList()
+                        .map(res -> {
+                            res.forEach(capacidadRes -> {
+                                String nombre = paginaCapacidades.stream()
+                                        .filter(capacidad -> capacidad.getId().equals(capacidadRes.getId()))
+                                        .map(CapacidadResponseDto::getNombre)
+                                        .findFirst()
+                                        .orElse("");
+
+                                capacidadRes.setNombre(nombre);
+                            });
+
+                            return new CapacidadPaginacionResponseDto<>(
+                                res,
+                                filter.getNumeroPagina(),
+                                filter.getTamanoPorPagina(),
+                                paginaCapacidades.size());
+                        });
+            }));
+    }
+
+    private Comparator<CapacidadResponseDto> getComparator(CapacidadFilterRequestDto filter) {
+        if ("nombre".equalsIgnoreCase(filter.getColumnaOrdenamiento())) {
+            return filter.getDireccionOrdenamiento().equalsIgnoreCase("asc")
+                    ? Comparator.comparing(CapacidadResponseDto::getNombre)
+                    : Comparator.comparing(CapacidadResponseDto::getNombre).reversed();
+        } else if ("nrotecnologia".equalsIgnoreCase(filter.getColumnaOrdenamiento())) {
+            return filter.getDireccionOrdenamiento().equalsIgnoreCase("asc")
+                    ? Comparator.comparingInt(CapacidadResponseDto::getCantidadTecnologia)
+                    : Comparator.comparingInt(CapacidadResponseDto::getCantidadTecnologia).reversed();
+        }
+
+        // Comparator por defecto en caso de que el campo no coincida
+        return Comparator.comparing(CapacidadResponseDto::getNombre);
     }
 
     private Mono<CapacidadModel> validarGuardar(Mono<CapacidadRequestDto> request){

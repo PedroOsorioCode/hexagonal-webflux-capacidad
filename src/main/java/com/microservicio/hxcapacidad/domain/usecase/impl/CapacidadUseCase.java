@@ -5,6 +5,7 @@ import com.microservicio.hxcapacidad.domain.model.CapacidadModel;
 import com.microservicio.hxcapacidad.domain.serviceprovider.ICapacidadPersistencePort;
 import com.microservicio.hxcapacidad.domain.usecase.ICapacidadUseCasePort;
 import lombok.RequiredArgsConstructor;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @UseCase
@@ -19,5 +20,10 @@ public class CapacidadUseCase implements ICapacidadUseCasePort {
     @Override
     public Mono<Boolean> existePorNombre(String nombre) {
         return capacidadPersistencePort.existePorNombre(nombre);
+    }
+
+    @Override
+    public Flux<CapacidadModel> obtenerTodos() {
+        return capacidadPersistencePort.obtenerTodos();
     }
 }

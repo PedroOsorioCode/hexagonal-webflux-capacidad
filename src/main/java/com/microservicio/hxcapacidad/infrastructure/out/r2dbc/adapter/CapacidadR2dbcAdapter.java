@@ -7,6 +7,7 @@ import com.microservicio.hxcapacidad.infrastructure.out.r2dbc.mapper.ICapacidadE
 import com.microservicio.hxcapacidad.infrastructure.out.r2dbc.repository.CapacidadRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @PersistenceAdapter
@@ -25,5 +26,10 @@ public class CapacidadR2dbcAdapter implements ICapacidadPersistencePort {
     @Override
     public Mono<Boolean> existePorNombre(String nombre) {
         return capacidadRepository.findByNombre(nombre).hasElement();
+    }
+
+    @Override
+    public Flux<CapacidadModel> obtenerTodos() {
+        return capacidadRepository.findAll().map(capacidadEntityMapper::toModelFromEntity);
     }
 }

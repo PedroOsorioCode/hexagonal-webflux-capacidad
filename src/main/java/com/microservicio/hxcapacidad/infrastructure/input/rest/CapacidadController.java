@@ -1,6 +1,8 @@
 package com.microservicio.hxcapacidad.infrastructure.input.rest;
 
+import com.microservicio.hxcapacidad.application.dto.request.CapacidadFilterRequestDto;
 import com.microservicio.hxcapacidad.application.dto.request.CapacidadRequestDto;
+import com.microservicio.hxcapacidad.application.dto.response.CapacidadPaginacionResponseDto;
 import com.microservicio.hxcapacidad.application.dto.response.CapacidadResponseDto;
 import com.microservicio.hxcapacidad.application.service.ICapacidadService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -37,5 +39,14 @@ public class CapacidadController {
         return capacidadService.guardar(capacidadRequestDto)
                 .map(capacidadModel -> ResponseEntity.ok(capacidadModel))
                 .defaultIfEmpty(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/listar")
+    public Mono<ResponseEntity<CapacidadPaginacionResponseDto<CapacidadResponseDto>>> consultarTodos(
+            @RequestBody Mono<CapacidadFilterRequestDto> capacidadFilterRequestDTO) {
+
+        return capacidadService.consultarTodosPaginado(capacidadFilterRequestDTO)
+                .map(ResponseEntity::ok)
+                .defaultIfEmpty(ResponseEntity.noContent().build());
     }
 }
