@@ -33,27 +33,39 @@ public class CapacidadService implements ICapacidadService {
 
     @Override
     public Mono<CapacidadResponseDto> guardar(Mono<CapacidadRequestDto> capacidadRequestDTO) {
-        return this.validarGuardar(capacidadRequestDTO)
-                .onErrorResume(Mono::error)
-                .flatMap(data ->
+        return capacidadRequestDTO.flatMap(capacidad -> this.validarGuardar(Mono.just(capacidad))
+            .onErrorResume(Mono::error)
+            .flatMap(data ->
                     capacidadUseCasePort.guardar(data).map(capacidadModelMapper::toResponseFromModel)
-                )
-                .flatMap(savedCapacidad -> {
-                    Long capacidadId = savedCapacidad.getId();
+            )
+            .flatMap(savedCapacidad -> {
+                Long capacidadId = savedCapacidad.getId();
 
-                    return capacidadRequestDTO.flatMap(capacidad -> {
-                        List<Long> listaTec = capacidad.getListaTecnologia().stream().map(data -> data.getId()).toList();
-                        CapacidadTecnologiaRequestDto req = new CapacidadTecnologiaRequestDto(capacidadId, listaTec);
+            List<Long> listaTec = capacidad.getListaTecnologia().stream().map(data -> data.getId()).toList();
+            CapacidadTecnologiaRequestDto req = new CapacidadTecnologiaRequestDto(capacidadId, listaTec);
 
-                        return webClient.post()
-                            .uri("/relacionar-capacidad-tecnologia")
-                            .bodyValue(req)
-                            .retrieve()
-                            .bodyToFlux(TecnologiaResponseDto.class)
-                            .collectList()
-                            .then(Mono.fromCallable(() -> savedCapacidad));
+            return webClient.post()
+                    .uri("/relacionar-capacidad-tecnologia")
+                    .bodyValue(req)
+                    .retrieve()
+                    .onStatus(
+                            status -> status.is4xxClientError() || status.is5xxServerError(), // Captura errores 4xx y 5xx
+                            clientResponse -> clientResponse.bodyToMono(String.class) // Extrae el mensaje de error
+                                    .map(errorMessage -> new RuntimeException("Error en la llamada: " + errorMessage))
+                    )
+                    .bodyToFlux(TecnologiaResponseDto.class)
+                    .collectList()
+                    .map(responseList -> {
+                        // Asigna la lista de respuestas a un atributo de savedCapacidad
+                        savedCapacidad.setListaTecnologias(responseList);
+                        return savedCapacidad;
+                    }).onErrorResume(e -> {
+                        // Manejo general de errores en caso de excepciones imprevistas
+                        System.err.println("Error durante la llamada: " + e.getMessage());
+                        // Retorna un valor por defecto, un Mono vacío, o una excepción controlada, según tu necesidad
+                        return Mono.error(new RuntimeException("No se pudo relacionar capacidad con tecnología", e));
                     });
-                });
+            }));
     }
 
     private Mono<CapacidadModel> validarGuardar(Mono<CapacidadRequestDto> request){
@@ -74,14 +86,15 @@ public class CapacidadService implements ICapacidadService {
             if (this.existenTecnologiasRepetidas(req.getListaTecnologia()))
                 mensaje = MensajeError.TECNOLOGIA_REPETIDAS.formato(req.getNombre());
 
-            if (!mensaje.isEmpty()) {
+            if (!mensaje.isEmpty())
                 return Mono.error(new RuntimeException(mensaje));
-            }
 
+            CapacidadModel capacidadModel = capacidadModelMapper.toModelFromRequest(req);
+            capacidadModel.setCantidadTecnologia(req.getListaTecnologia().size());
             return capacidadUseCasePort.existePorNombre(req.getNombre())
-                    .flatMap(existe -> existe ?
-                            Mono.error(new RuntimeException(MensajeError.NOMBRE_DUPLICADO.getMensaje()))
-                            : Mono.just(capacidadModelMapper.toModelFromRequest(req)));
+                .flatMap(existe -> existe ?
+                    Mono.error(new RuntimeException(MensajeError.NOMBRE_DUPLICADO.getMensaje()))
+                    : Mono.just(capacidadModel));
         });
     }
 

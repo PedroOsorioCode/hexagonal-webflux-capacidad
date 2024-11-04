@@ -15,5 +15,5 @@ public class CapacidadEntity {
     private Long id;
     private String nombre;
     private String descripcion;
-    private int nrotecnologia;
+    private int cantidadTecnologia;
 }
