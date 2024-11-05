@@ -4,6 +4,7 @@ import com.microservicio.hxcapacidad.application.dto.request.BootcampRequestDto;
 import com.microservicio.hxcapacidad.application.dto.request.CapacidadFilterRequestDto;
 import com.microservicio.hxcapacidad.application.dto.request.CapacidadRequestDto;
 import com.microservicio.hxcapacidad.application.dto.response.BootcampCapacidadResponseDto;
+import com.microservicio.hxcapacidad.application.dto.response.BootcampPaginacionResponseDto;
 import com.microservicio.hxcapacidad.application.dto.response.CapacidadPaginacionResponseDto;
 import com.microservicio.hxcapacidad.application.dto.response.CapacidadResponseDto;
 import com.microservicio.hxcapacidad.application.service.IBootcampCapacidadService;
@@ -64,5 +65,14 @@ public class CapacidadController {
         return bootcampCapacidadService.guardarBootcamp(bootcampRequestDto)
                 .map(capacidad -> ResponseEntity.ok(capacidad))
                 .defaultIfEmpty(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/listar-bootcamp")
+    public Mono<ResponseEntity<BootcampPaginacionResponseDto<BootcampCapacidadResponseDto>>> consultarBootcampTodos(
+            @RequestBody Mono<CapacidadFilterRequestDto> capacidadFilterRequestDTO) {
+
+        return bootcampCapacidadService.consultarBootcampTodosPaginado(capacidadFilterRequestDTO)
+                .map(ResponseEntity::ok)
+                .defaultIfEmpty(ResponseEntity.noContent().build());
     }
 }

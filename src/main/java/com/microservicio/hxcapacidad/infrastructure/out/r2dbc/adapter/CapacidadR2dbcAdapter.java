@@ -10,6 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
+
 @PersistenceAdapter
 @Slf4j
 @RequiredArgsConstructor
@@ -31,5 +33,10 @@ public class CapacidadR2dbcAdapter implements ICapacidadPersistencePort {
     @Override
     public Flux<CapacidadModel> obtenerTodos() {
         return capacidadRepository.findAll().map(capacidadEntityMapper::toModelFromEntity);
+    }
+
+    @Override
+    public Flux<CapacidadModel> obtenerTodosPorId(List<Long> idsCapacidad) {
+        return capacidadRepository.findAllById(idsCapacidad).map(capacidadEntityMapper::toModelFromEntity);
     }
 }

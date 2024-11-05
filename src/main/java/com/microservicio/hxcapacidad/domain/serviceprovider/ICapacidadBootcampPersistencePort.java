@@ -6,4 +6,5 @@ import java.util.List;
 
 public interface ICapacidadBootcampPersistencePort {
     Flux<CapacidadBootcampModel> guardarRelacion(List<CapacidadBootcampModel> lista);
+    Flux<CapacidadBootcampModel> consultarPorBootcamp(List<Long> listaIdBootcamp);
 }

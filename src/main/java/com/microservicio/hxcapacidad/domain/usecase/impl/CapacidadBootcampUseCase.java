@@ -16,4 +16,9 @@ public class CapacidadBootcampUseCase implements ICapacidadBootcampUseCasePort {
     public Flux<CapacidadBootcampModel> guardarRelacion(List<CapacidadBootcampModel> lista) {
         return capacidadBootcampPersistencePort.guardarRelacion(lista);
     }
+
+    @Override
+    public Flux<CapacidadBootcampModel> consultarPorBootcamp(List<Long> listaIdBootcamp) {
+        return capacidadBootcampPersistencePort.consultarPorBootcamp(listaIdBootcamp);
+    }
 }

@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
+
 @UseCase
 @RequiredArgsConstructor
 public class CapacidadUseCase implements ICapacidadUseCasePort {
@@ -25,5 +27,10 @@ public class CapacidadUseCase implements ICapacidadUseCasePort {
     @Override
     public Flux<CapacidadModel> obtenerTodos() {
         return capacidadPersistencePort.obtenerTodos();
+    }
+
+    @Override
+    public Flux<CapacidadModel> obtenerTodosPorId(List<Long> idsCapacidad) {
+        return capacidadPersistencePort.obtenerTodosPorId(idsCapacidad);
     }
 }

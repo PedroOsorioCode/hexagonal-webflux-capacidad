@@ -17,11 +17,18 @@ import java.util.List;
 public class CapacidadBootcampR2dbcAdapter implements ICapacidadBootcampPersistencePort {
     private final CapacidadBootcampRepository capacidadBootcampRepository;
     private final ICapacidadBootcampEntityMapper capacidadBootcampEntityMapper;
+
     @Override
     public Flux<CapacidadBootcampModel> guardarRelacion(List<CapacidadBootcampModel> lista) {
         List<CapacidadBootcampEntity> listaEntity =
                 capacidadBootcampEntityMapper.toEntityFromModelList(lista);
         return capacidadBootcampRepository.saveAll(listaEntity)
+                .map(capacidadBootcampEntityMapper::toModelFromEntity);
+    }
+
+    @Override
+    public Flux<CapacidadBootcampModel> consultarPorBootcamp(List<Long> listaIdBootcamp) {
+        return capacidadBootcampRepository.findAllByidBootcampIn(listaIdBootcamp)
                 .map(capacidadBootcampEntityMapper::toModelFromEntity);
     }
 }
