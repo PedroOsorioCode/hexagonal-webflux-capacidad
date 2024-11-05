@@ -18,10 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -97,21 +94,27 @@ public class CapacidadService implements ICapacidadService {
                         .bodyToFlux(CapacidadResponseDto.class)
                         .collectList()
                         .map(res -> {
-                            res.forEach(capacidadRes -> {
-                                String nombre = paginaCapacidades.stream()
-                                        .filter(capacidad -> capacidad.getId().equals(capacidadRes.getId()))
-                                        .map(CapacidadResponseDto::getNombre)
-                                        .findFirst()
-                                        .orElse("");
 
-                                capacidadRes.setNombre(nombre);
+                            res.forEach(capacidadRes -> {
+                                Optional<CapacidadResponseDto> opCapacidad = paginaCapacidades.stream()
+                                        .filter(capacidad -> capacidad.getId().equals(capacidadRes.getId()))
+                                        .findFirst();
+
+                                if (opCapacidad.isPresent()){
+                                    capacidadRes.setNombre(opCapacidad.get().getNombre());
+                                    capacidadRes.setCantidadTecnologia(opCapacidad.get().getCantidadTecnologia());
+                                }
                             });
 
+                            List<CapacidadResponseDto> ordenadoRes = res.stream()
+                                    .sorted(getComparator(filter)) // Reaplicar el comparador
+                                    .toList();
+
                             return new CapacidadPaginacionResponseDto<>(
-                                res,
+                                    ordenadoRes,
                                 filter.getNumeroPagina(),
                                 filter.getTamanoPorPagina(),
-                                paginaCapacidades.size());
+                                listaCapacidad.size());
                         });
             }));
     }
@@ -119,16 +122,17 @@ public class CapacidadService implements ICapacidadService {
     private Comparator<CapacidadResponseDto> getComparator(CapacidadFilterRequestDto filter) {
         if ("nombre".equalsIgnoreCase(filter.getColumnaOrdenamiento())) {
             return filter.getDireccionOrdenamiento().equalsIgnoreCase("asc")
-                    ? Comparator.comparing(CapacidadResponseDto::getNombre)
-                    : Comparator.comparing(CapacidadResponseDto::getNombre).reversed();
+                    ? Comparator.comparing(CapacidadResponseDto::getNombre, Comparator.nullsLast(String::compareTo)) // Manejo de nulls al final
+                    : Comparator.comparing(CapacidadResponseDto::getNombre, Comparator.nullsLast(String::compareTo)).reversed(); // Manejo de nulls al final
         } else if ("nrotecnologia".equalsIgnoreCase(filter.getColumnaOrdenamiento())) {
             return filter.getDireccionOrdenamiento().equalsIgnoreCase("asc")
-                    ? Comparator.comparingInt(CapacidadResponseDto::getCantidadTecnologia)
-                    : Comparator.comparingInt(CapacidadResponseDto::getCantidadTecnologia).reversed();
+                    ? Comparator.comparingInt(CapacidadResponseDto::getCantidadTecnologia) // Evitar NullPointerException si es null
+                    : Comparator.comparingInt(CapacidadResponseDto::getCantidadTecnologia).reversed(); // Evitar NullPointerException si es null
         }
 
         // Comparator por defecto en caso de que el campo no coincida
-        return Comparator.comparing(CapacidadResponseDto::getNombre);
+        return Comparator.comparing(CapacidadResponseDto::getNombre, Comparator.nullsLast(String::compareTo)); // Manejo de nulls al final
+
     }
 
     private Mono<CapacidadModel> validarGuardar(Mono<CapacidadRequestDto> request){

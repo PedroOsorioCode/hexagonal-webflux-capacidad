@@ -20,6 +20,7 @@ import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("/api/capacidad")
+@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class CapacidadController {
     private final ICapacidadService capacidadService;
