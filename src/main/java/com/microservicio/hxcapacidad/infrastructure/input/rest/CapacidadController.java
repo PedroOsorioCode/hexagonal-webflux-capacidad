@@ -1,9 +1,12 @@
 package com.microservicio.hxcapacidad.infrastructure.input.rest;
 
+import com.microservicio.hxcapacidad.application.dto.request.BootcampRequestDto;
 import com.microservicio.hxcapacidad.application.dto.request.CapacidadFilterRequestDto;
 import com.microservicio.hxcapacidad.application.dto.request.CapacidadRequestDto;
+import com.microservicio.hxcapacidad.application.dto.response.BootcampCapacidadResponseDto;
 import com.microservicio.hxcapacidad.application.dto.response.CapacidadPaginacionResponseDto;
 import com.microservicio.hxcapacidad.application.dto.response.CapacidadResponseDto;
+import com.microservicio.hxcapacidad.application.service.IBootcampCapacidadService;
 import com.microservicio.hxcapacidad.application.service.ICapacidadService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -19,6 +22,7 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class CapacidadController {
     private final ICapacidadService capacidadService;
+    private final IBootcampCapacidadService bootcampCapacidadService;
 
     @Operation(summary = "Validar la salud de la aplicación")
     @ApiResponses(value = {
@@ -37,7 +41,7 @@ public class CapacidadController {
     @PostMapping
     public Mono<ResponseEntity<CapacidadResponseDto>> guardar(@RequestBody Mono<CapacidadRequestDto> capacidadRequestDto) {
         return capacidadService.guardar(capacidadRequestDto)
-                .map(capacidadModel -> ResponseEntity.ok(capacidadModel))
+                .map(capacidad -> ResponseEntity.ok(capacidad))
                 .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 
@@ -48,5 +52,17 @@ public class CapacidadController {
         return capacidadService.consultarTodosPaginado(capacidadFilterRequestDTO)
                 .map(ResponseEntity::ok)
                 .defaultIfEmpty(ResponseEntity.noContent().build());
+    }
+
+    @Operation(summary = "Registrar bootcamp con las capacidades")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Bootcamp guardada correctamente", content = @Content),
+            @ApiResponse(responseCode = "409", description = "Inconsistencia en la información", content = @Content)
+    })
+    @PostMapping("/registrar-bootcamp")
+    public Mono<ResponseEntity<BootcampCapacidadResponseDto>> guardarBootcamp(@RequestBody Mono<BootcampRequestDto> bootcampRequestDto) {
+        return bootcampCapacidadService.guardarBootcamp(bootcampRequestDto)
+                .map(capacidad -> ResponseEntity.ok(capacidad))
+                .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 }

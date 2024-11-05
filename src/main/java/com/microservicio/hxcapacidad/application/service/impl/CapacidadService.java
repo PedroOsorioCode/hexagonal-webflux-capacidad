@@ -2,10 +2,8 @@ package com.microservicio.hxcapacidad.application.service.impl;
 
 import com.microservicio.hxcapacidad.application.common.ConstantesAplicacion;
 import com.microservicio.hxcapacidad.application.common.MensajeError;
-import com.microservicio.hxcapacidad.application.dto.request.CapacidadFilterRequestDto;
-import com.microservicio.hxcapacidad.application.dto.request.CapacidadRequestDto;
-import com.microservicio.hxcapacidad.application.dto.request.CapacidadTecnologiaRequestDto;
-import com.microservicio.hxcapacidad.application.dto.request.TecnologiaRequestDto;
+import com.microservicio.hxcapacidad.application.dto.request.*;
+import com.microservicio.hxcapacidad.application.dto.response.BootcampCapacidadResponseDto;
 import com.microservicio.hxcapacidad.application.dto.response.CapacidadPaginacionResponseDto;
 import com.microservicio.hxcapacidad.application.dto.response.CapacidadResponseDto;
 import com.microservicio.hxcapacidad.application.dto.response.TecnologiaResponseDto;

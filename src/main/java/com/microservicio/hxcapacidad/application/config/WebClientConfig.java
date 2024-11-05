@@ -10,8 +10,16 @@ public class WebClientConfig {
     @Value("${addressservice.base.url}")
     private String addressBaseUrl;
 
+    @Value("${addressservice.base.urlbootcamp}")
+    private String addressBaseUrlBootcamp;
+
     @Bean
     public WebClient webClient() {
         return WebClient.builder().baseUrl(addressBaseUrl).build();
+    }
+
+    @Bean
+    public WebClient webClientBootcamp() {
+        return WebClient.builder().baseUrl(addressBaseUrlBootcamp).build();
     }
 }
