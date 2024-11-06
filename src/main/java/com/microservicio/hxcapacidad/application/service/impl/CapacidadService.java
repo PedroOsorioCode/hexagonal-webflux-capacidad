@@ -8,7 +8,6 @@ import com.microservicio.hxcapacidad.application.dto.request.CapacidadTecnologia
 import com.microservicio.hxcapacidad.application.dto.request.TecnologiaRequestDto;
 import com.microservicio.hxcapacidad.application.dto.response.CapacidadPaginacionResponseDto;
 import com.microservicio.hxcapacidad.application.dto.response.CapacidadResponseDto;
-import com.microservicio.hxcapacidad.application.dto.response.TecnologiaResponseDto;
 import com.microservicio.hxcapacidad.application.mapper.ICapacidadModelMapper;
 import com.microservicio.hxcapacidad.application.service.ICapacidadService;
 import com.microservicio.hxcapacidad.domain.model.CapacidadModel;
@@ -17,7 +16,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 import java.util.*;
@@ -29,7 +27,6 @@ import java.util.*;
 public class CapacidadService implements ICapacidadService {
     private final ICapacidadModelMapper capacidadModelMapper;
     private final ICapacidadUseCasePort capacidadUseCasePort;
-    private final WebClient webClient;
 
     @Override
     public Mono<CapacidadResponseDto> guardar(Mono<CapacidadRequestDto> capacidadRequestDTO) {
@@ -41,31 +38,22 @@ public class CapacidadService implements ICapacidadService {
             .flatMap(savedCapacidad -> {
                 Long capacidadId = savedCapacidad.getId();
 
-            List<Long> listaTec = capacidad.getListaTecnologia().stream().map(data -> data.getId()).toList();
-            CapacidadTecnologiaRequestDto req = new CapacidadTecnologiaRequestDto(capacidadId, listaTec);
+                List<Long> listaTec = capacidad.getListaTecnologia().stream().map(data -> data.getId()).toList();
+                CapacidadTecnologiaRequestDto req = new CapacidadTecnologiaRequestDto(capacidadId, listaTec);
 
-            return webClient.post()
-                    .uri("/relacionar-capacidad-tecnologia")
-                    .bodyValue(req)
-                    .retrieve()
-                    .onStatus(
-                            status -> status.is4xxClientError() || status.is5xxServerError(), // Captura errores 4xx y 5xx
-                            clientResponse -> clientResponse.bodyToMono(String.class) // Extrae el mensaje de error
-                                    .map(errorMessage -> new RuntimeException("Error en la llamada: " + errorMessage))
-                    )
-                    .bodyToFlux(TecnologiaResponseDto.class)
-                    .collectList()
-                    .map(responseList -> {
-                        savedCapacidad.setListaTecnologias(responseList);
-                        return savedCapacidad;
-                    }).onErrorResume(e ->
-                        Mono.error(new RuntimeException("No se pudo relacionar capacidad con tecnología", e)));
+                return capacidadUseCasePort.relacionarCapacidadTecnologia(req)
+                        .collectList()
+                        .map(responseList -> {
+                            savedCapacidad.setListaTecnologias(responseList);
+                            return savedCapacidad;
+                        });
             }));
     }
 
     @Override
     public Mono<CapacidadPaginacionResponseDto<CapacidadResponseDto>>
-    consultarTodosPaginado(Mono<CapacidadFilterRequestDto> capacidadFilterRequestDTO) {
+        consultarTodosPaginado(Mono<CapacidadFilterRequestDto> capacidadFilterRequestDTO) {
+
         return capacidadFilterRequestDTO.flatMap(filter -> capacidadUseCasePort.obtenerTodos()
             .switchIfEmpty(Mono.empty())
             .map(capacidad ->
@@ -84,36 +72,34 @@ public class CapacidadService implements ICapacidadService {
                         .map(CapacidadResponseDto::getId)
                         .toList();
 
-                return webClient.post()
-                        .uri("/consultar-relacion-capacidad-tecnologia")
-                        .bodyValue(idListaCapacidad)
-                        .retrieve()
-                        .bodyToFlux(CapacidadResponseDto.class)
+                return capacidadUseCasePort.consultarRelacionCapacidadTecnologia(idListaCapacidad)
                         .collectList()
-                        .map(res -> {
-
-                            res.forEach(capacidadRes -> {
-                                Optional<CapacidadResponseDto> opCapacidad = paginaCapacidades.stream()
-                                        .filter(capacidad -> capacidad.getId().equals(capacidadRes.getId()))
-                                        .findFirst();
-
-                                if (opCapacidad.isPresent()){
-                                    capacidadRes.setNombre(opCapacidad.get().getNombre());
-                                    capacidadRes.setCantidadTecnologia(opCapacidad.get().getCantidadTecnologia());
-                                }
-                            });
-
-                            List<CapacidadResponseDto> ordenadoRes = res.stream()
-                                    .sorted(getComparator(filter)) // Reaplicar el comparador
-                                    .toList();
-
-                            return new CapacidadPaginacionResponseDto<>(
-                                    ordenadoRes,
-                                filter.getNumeroPagina(),
-                                filter.getTamanoPorPagina(),
-                                listaCapacidad.size());
-                        });
+                        .map(res ->
+                            crearRespuestaConsultarPaginado(filter, listaCapacidad, res, paginaCapacidades));
             }));
+    }
+
+    private CapacidadPaginacionResponseDto<CapacidadResponseDto> crearRespuestaConsultarPaginado(CapacidadFilterRequestDto filter, List<CapacidadResponseDto> listaCapacidad, List<CapacidadResponseDto> res, List<CapacidadResponseDto> paginaCapacidades) {
+        res.forEach(capacidadRes -> {
+            Optional<CapacidadResponseDto> opCapacidad = paginaCapacidades.stream()
+                    .filter(capacidad -> capacidad.getId().equals(capacidadRes.getId()))
+                    .findFirst();
+
+            if (opCapacidad.isPresent()){
+                capacidadRes.setNombre(opCapacidad.get().getNombre());
+                capacidadRes.setCantidadTecnologia(opCapacidad.get().getCantidadTecnologia());
+            }
+        });
+
+        List<CapacidadResponseDto> ordenadoRes = res.stream()
+                .sorted(getComparator(filter))
+                .toList();
+
+        return new CapacidadPaginacionResponseDto<>(
+                ordenadoRes,
+                filter.getNumeroPagina(),
+                filter.getTamanoPorPagina(),
+                listaCapacidad.size());
     }
 
     private Comparator<CapacidadResponseDto> getComparator(CapacidadFilterRequestDto filter) {

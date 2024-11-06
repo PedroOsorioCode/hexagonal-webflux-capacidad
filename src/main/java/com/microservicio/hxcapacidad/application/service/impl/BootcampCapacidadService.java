@@ -15,10 +15,8 @@ import com.microservicio.hxcapacidad.domain.usecase.ICapacidadBootcampUseCasePor
 import com.microservicio.hxcapacidad.domain.usecase.ICapacidadUseCasePort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 import java.util.*;
@@ -28,8 +26,6 @@ import java.util.*;
 @Slf4j
 @Transactional
 public class BootcampCapacidadService implements IBootcampCapacidadService {
-    private final WebClient webClientBootcamp;
-    private final WebClient webClient;
     private final ICapacidadBootcampUseCasePort capacidadBootcampUseCasePort;
     private final ICapacidadUseCasePort capacidadUseCasePort;
     private final ICapacidadBootcampModelMapper capacidadBootcampModelMapper;
@@ -39,38 +35,25 @@ public class BootcampCapacidadService implements IBootcampCapacidadService {
         return bootcampRequestDto
             .flatMap(bootcamp -> this.validarGuardar(Mono.just(bootcamp)))
             .onErrorResume(Mono::error)
-            .flatMap(data -> webClientBootcamp.post()
-                .uri("")
-                .bodyValue(data.getNuevoBootcamp())
-                .retrieve()
-                .toEntity(BootcampCapacidadResponseDto.class) // Captura toda la respuesta
-                .flatMap(responseEntity -> {
+            .flatMap(data -> capacidadBootcampUseCasePort.guardarBootcamp(data.getNuevoBootcamp())
+                .flatMap(respuesta -> {
                     // Extrae el cuerpo y el ID necesario
-                    BootcampCapacidadResponseDto respuesta = responseEntity.getBody();
-                    if (respuesta != null && respuesta.getId() != null) {
-                        Long idBootcamp = respuesta.getId();
+                    Long idBootcamp = respuesta.getId();
 
-                        // Crear lista de CapacidadBootcampModel usando el idBootcamp
-                        List<CapacidadBootcampModel> listaCapacidadBootcamModel = data.getListaCapacidad().stream()
-                                .map(dataIdCapacidad -> new CapacidadBootcampModel(dataIdCapacidad.getId(), idBootcamp))
-                                .toList();
+                    // Crear lista de CapacidadBootcampModel usando el idBootcamp
+                    List<CapacidadBootcampModel> listaCapacidadBootcamModel = data.getListaCapacidad().stream()
+                            .map(dataIdCapacidad -> new CapacidadBootcampModel(dataIdCapacidad.getId(), idBootcamp))
+                            .toList();
 
-                        // Procesa el fluxRelacion y transforma en BootcampCapacidadResponseDto
-                        return capacidadBootcampUseCasePort.guardarRelacion(listaCapacidadBootcamModel)
-                                .collectList() // Convierte el Flux en un Mono<List<CapacidadBootcampModel>>
-                                .map(listaCapacidades -> {
-                                    // Crea el DTO de respuesta y asigna la lista de capacidades
-                                    BootcampCapacidadResponseDto responseDto = new BootcampCapacidadResponseDto();
-                                    responseDto.setId(respuesta.getId());
-                                    responseDto.setNombre(respuesta.getNombre());
-                                    responseDto.setDescripcion(respuesta.getDescripcion());
-
-                                    return responseDto; // Retorna el DTO completo
-                                });
-                    } else {
-                        // Manejo de respuesta vacía o error
-                        return Mono.just(new BootcampCapacidadResponseDto());
-                    }
+                    return capacidadBootcampUseCasePort.guardarRelacion(listaCapacidadBootcamModel)
+                        .collectList()
+                        .map(listaCapacidades -> {
+                            BootcampCapacidadResponseDto responseDto = new BootcampCapacidadResponseDto();
+                            responseDto.setId(respuesta.getId());
+                            responseDto.setNombre(respuesta.getNombre());
+                            responseDto.setDescripcion(respuesta.getDescripcion());
+                            return responseDto;
+                        });
                 })
             );
     }
@@ -80,18 +63,14 @@ public class BootcampCapacidadService implements IBootcampCapacidadService {
         consultarBootcampTodosPaginado(Mono<CapacidadFilterRequestDto> capacidadFilterRequestDTO) {
 
         return capacidadFilterRequestDTO.flatMap(filter ->
-            webClientBootcamp.post()
-            .uri("/listar")
-            .bodyValue(filter)
-            .retrieve()
-            .bodyToMono(new ParameterizedTypeReference<BootcampPaginacionResponseDto<BootcampResponseDto>>() {})
+            this.capacidadBootcampUseCasePort.consultarBootcampPaginado(filter)
             .flatMap(responseList -> {
                 List<Long> idBootcamp = responseList.getContent().stream()
                         .map(BootcampResponseDto::getId)
                         .toList();
 
                 return capacidadBootcampUseCasePort.consultarPorBootcamp(idBootcamp)
-                    .collectList() // Convertir a Mono<List<CapacidadBootcampModel>>
+                    .collectList()
                     .flatMap(listaRelacionBootcamp ->
                             consultarCapacidadesConTecnologia(filter, responseList, listaRelacionBootcamp));
             })
@@ -104,20 +83,19 @@ public class BootcampCapacidadService implements IBootcampCapacidadService {
                   BootcampPaginacionResponseDto<BootcampResponseDto> responseList,
                   List<CapacidadBootcampModel> listaRelacionBootcamp) {
 
-        List<Long> idCapacidad = listaRelacionBootcamp.stream()
+        List<Long> idListaCapacidad = listaRelacionBootcamp.stream()
                 .map(CapacidadBootcampModel::getIdCapacidad)
                 .toList();
 
         // Consultar todas las capacidades y crear la respuesta final
-        return capacidadUseCasePort.obtenerTodosPorId(idCapacidad)
+        return capacidadUseCasePort.obtenerTodosPorId(idListaCapacidad)
                 .collectList()
-                .flatMap(listaCapacidades -> webClient.post()
-                        .uri("/consultar-relacion-capacidad-tecnologia")
-                        .bodyValue(idCapacidad)
-                        .retrieve()
-                        .bodyToFlux(CapacidadResponseDto.class)
-                        .collectList()
-                        .map(res -> crearRespuestaPaginada(filter, responseList, listaRelacionBootcamp, listaCapacidades, res)));
+                .flatMap(listaCapacidades ->
+                    capacidadUseCasePort.consultarRelacionCapacidadTecnologia(idListaCapacidad)
+                    .collectList()
+                    .map(res -> crearRespuestaPaginada(filter, responseList,
+                            listaRelacionBootcamp,
+                            listaCapacidades, res)));
     }
 
     private BootcampPaginacionResponseDto<BootcampCapacidadResponseDto>
