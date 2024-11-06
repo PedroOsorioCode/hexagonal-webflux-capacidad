@@ -59,17 +59,6 @@ public class BootcampCapacidadService implements IBootcampCapacidadService {
                         return capacidadBootcampUseCasePort.guardarRelacion(listaCapacidadBootcamModel)
                                 .collectList() // Convierte el Flux en un Mono<List<CapacidadBootcampModel>>
                                 .map(listaCapacidades -> {
-
-                                    /*List<Long> idCapacidad = listaCapacidades.stream()
-                                            .map(CapacidadBootcampModel::getIdCapacidad)
-                                            .toList();
-
-                                    return capacidadUseCasePort.obtenerTodosPorId(idCapacidad)
-                                            .collectList()
-                                            .flatMap(listaCapacidadesDto ->{
-
-                                            });*/
-
                                     // Crea el DTO de respuesta y asigna la lista de capacidades
                                     BootcampCapacidadResponseDto responseDto = new BootcampCapacidadResponseDto();
                                     responseDto.setId(respuesta.getId());
@@ -172,17 +161,17 @@ public class BootcampCapacidadService implements IBootcampCapacidadService {
             String mensaje = "";
             if (req.getNombre().isEmpty())
                 mensaje = MensajeError.DATOS_OBLIGATORIOS.formato(ConstantesAplicacion.NOMBRE);
-            if (req.getDescripcion().isEmpty())
+            else if (req.getDescripcion().isEmpty())
                 mensaje = MensajeError.DATOS_OBLIGATORIOS.formato(ConstantesAplicacion.DESCRIPCION);
-            if (req.getNombre().length() > ConstantesAplicacion.MAX_NOMBRE)
+            else if (req.getNombre().length() > ConstantesAplicacion.MAX_NOMBRE)
                 mensaje = MensajeError.LONGITUD_PERMITIDA.formato(ConstantesAplicacion.NOMBRE, ConstantesAplicacion.MAX_NOMBRE);
-            if (req.getDescripcion().length() > ConstantesAplicacion.MAX_DESCRIPCION)
+            else if (req.getDescripcion().length() > ConstantesAplicacion.MAX_DESCRIPCION)
                 mensaje = MensajeError.LONGITUD_PERMITIDA.formato(ConstantesAplicacion.DESCRIPCION, ConstantesAplicacion.MAX_DESCRIPCION);
-            if (req.getListaCapacidad().isEmpty())
+            else if (req.getListaCapacidad().isEmpty())
                 mensaje = MensajeError.CAPACIDAD_INCOMPLETAS.formato(req.getNombre());
-            if (req.getListaCapacidad().size() > 4)
+            else if (req.getListaCapacidad().size() > 4)
                 mensaje = MensajeError.CAPACIDAD_NO_PERMITIDAS.formato(req.getNombre());
-            if (this.existenCapacidadesRepetidas(req.getListaCapacidad()))
+            else if (this.existenCapacidadesRepetidas(req.getListaCapacidad()))
                 mensaje = MensajeError.CAPACIDAD_REPETIDAS.formato(req.getNombre());
 
             if (!mensaje.isEmpty())

@@ -2,8 +2,10 @@ package com.microservicio.hxcapacidad.application.service.impl;
 
 import com.microservicio.hxcapacidad.application.common.ConstantesAplicacion;
 import com.microservicio.hxcapacidad.application.common.MensajeError;
-import com.microservicio.hxcapacidad.application.dto.request.*;
-import com.microservicio.hxcapacidad.application.dto.response.BootcampCapacidadResponseDto;
+import com.microservicio.hxcapacidad.application.dto.request.CapacidadFilterRequestDto;
+import com.microservicio.hxcapacidad.application.dto.request.CapacidadRequestDto;
+import com.microservicio.hxcapacidad.application.dto.request.CapacidadTecnologiaRequestDto;
+import com.microservicio.hxcapacidad.application.dto.request.TecnologiaRequestDto;
 import com.microservicio.hxcapacidad.application.dto.response.CapacidadPaginacionResponseDto;
 import com.microservicio.hxcapacidad.application.dto.response.CapacidadResponseDto;
 import com.microservicio.hxcapacidad.application.dto.response.TecnologiaResponseDto;
@@ -54,15 +56,10 @@ public class CapacidadService implements ICapacidadService {
                     .bodyToFlux(TecnologiaResponseDto.class)
                     .collectList()
                     .map(responseList -> {
-                        // Asigna la lista de respuestas a un atributo de savedCapacidad
                         savedCapacidad.setListaTecnologias(responseList);
                         return savedCapacidad;
-                    }).onErrorResume(e -> {
-                        // Manejo general de errores en caso de excepciones imprevistas
-                        System.err.println("Error durante la llamada: " + e.getMessage());
-                        // Retorna un valor por defecto, un Mono vacío, o una excepción controlada, según tu necesidad
-                        return Mono.error(new RuntimeException("No se pudo relacionar capacidad con tecnología", e));
-                    });
+                    }).onErrorResume(e ->
+                        Mono.error(new RuntimeException("No se pudo relacionar capacidad con tecnología", e)));
             }));
     }
 
@@ -120,11 +117,11 @@ public class CapacidadService implements ICapacidadService {
     }
 
     private Comparator<CapacidadResponseDto> getComparator(CapacidadFilterRequestDto filter) {
-        if ("nombre".equalsIgnoreCase(filter.getColumnaOrdenamiento())) {
+        if (ConstantesAplicacion.COLUMN_NOMBRE.equalsIgnoreCase(filter.getColumnaOrdenamiento())) {
             return filter.getDireccionOrdenamiento().equalsIgnoreCase("asc")
                     ? Comparator.comparing(CapacidadResponseDto::getNombre, Comparator.nullsLast(String::compareTo)) // Manejo de nulls al final
                     : Comparator.comparing(CapacidadResponseDto::getNombre, Comparator.nullsLast(String::compareTo)).reversed(); // Manejo de nulls al final
-        } else if ("nrotecnologia".equalsIgnoreCase(filter.getColumnaOrdenamiento())) {
+        } else if (ConstantesAplicacion.COLUMN_CANTIDAD.equalsIgnoreCase(filter.getColumnaOrdenamiento())) {
             return filter.getDireccionOrdenamiento().equalsIgnoreCase("asc")
                     ? Comparator.comparingInt(CapacidadResponseDto::getCantidadTecnologia) // Evitar NullPointerException si es null
                     : Comparator.comparingInt(CapacidadResponseDto::getCantidadTecnologia).reversed(); // Evitar NullPointerException si es null
@@ -140,17 +137,17 @@ public class CapacidadService implements ICapacidadService {
             String mensaje = "";
             if (req.getNombre().isEmpty())
                 mensaje = MensajeError.DATOS_OBLIGATORIOS.formato(ConstantesAplicacion.NOMBRE);
-            if (req.getDescripcion().isEmpty())
+            else if (req.getDescripcion().isEmpty())
                 mensaje = MensajeError.DATOS_OBLIGATORIOS.formato(ConstantesAplicacion.DESCRIPCION);
-            if (req.getNombre().length() > ConstantesAplicacion.MAX_NOMBRE)
+            else if (req.getNombre().length() > ConstantesAplicacion.MAX_NOMBRE)
                 mensaje = MensajeError.LONGITUD_PERMITIDA.formato(ConstantesAplicacion.NOMBRE, ConstantesAplicacion.MAX_NOMBRE);
-            if (req.getDescripcion().length() > ConstantesAplicacion.MAX_DESCRIPCION)
+            else if (req.getDescripcion().length() > ConstantesAplicacion.MAX_DESCRIPCION)
                 mensaje = MensajeError.LONGITUD_PERMITIDA.formato(ConstantesAplicacion.DESCRIPCION, ConstantesAplicacion.MAX_DESCRIPCION);
-            if (req.getListaTecnologia().size() < 3)
+            else if (req.getListaTecnologia().size() < 3)
                 mensaje = MensajeError.TECNOLOGIA_INCOMPLETAS.formato(req.getNombre());
-            if (req.getListaTecnologia().size() > 20)
+            else if (req.getListaTecnologia().size() > 20)
                 mensaje = MensajeError.TECNOLOGIA_NO_PERMITIDAS.formato(req.getNombre());
-            if (this.existenTecnologiasRepetidas(req.getListaTecnologia()))
+            else if (this.existenTecnologiasRepetidas(req.getListaTecnologia()))
                 mensaje = MensajeError.TECNOLOGIA_REPETIDAS.formato(req.getNombre());
 
             if (!mensaje.isEmpty())
@@ -159,7 +156,7 @@ public class CapacidadService implements ICapacidadService {
             CapacidadModel capacidadModel = capacidadModelMapper.toModelFromRequest(req);
             capacidadModel.setCantidadTecnologia(req.getListaTecnologia().size());
             return capacidadUseCasePort.existePorNombre(req.getNombre())
-                .flatMap(existe -> existe ?
+                .flatMap(existe -> Boolean.TRUE.equals(existe) ?
                     Mono.error(new RuntimeException(MensajeError.NOMBRE_DUPLICADO.getMensaje()))
                     : Mono.just(capacidadModel));
         });

@@ -43,7 +43,7 @@ public class CapacidadController {
     @PostMapping
     public Mono<ResponseEntity<CapacidadResponseDto>> guardar(@RequestBody Mono<CapacidadRequestDto> capacidadRequestDto) {
         return capacidadService.guardar(capacidadRequestDto)
-                .map(capacidad -> ResponseEntity.ok(capacidad))
+                .map(ResponseEntity::ok)
                 .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 
@@ -64,7 +64,7 @@ public class CapacidadController {
     @PostMapping("/registrar-bootcamp")
     public Mono<ResponseEntity<BootcampCapacidadResponseDto>> guardarBootcamp(@RequestBody Mono<BootcampRequestDto> bootcampRequestDto) {
         return bootcampCapacidadService.guardarBootcamp(bootcampRequestDto)
-                .map(capacidad -> ResponseEntity.ok(capacidad))
+                .map(ResponseEntity::ok)
                 .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 
