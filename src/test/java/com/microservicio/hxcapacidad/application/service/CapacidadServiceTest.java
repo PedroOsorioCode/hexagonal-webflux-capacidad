@@ -12,7 +12,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -25,8 +24,6 @@ class CapacidadServiceTest {
     private ICapacidadModelMapper capacidadModelMapper;
     @Mock
     private CapacidadUseCase capacidadUseCase;
-    @Mock
-    private WebClient webClient;
 
     private String nombre = "test";
     private String descripcion = "testd";
