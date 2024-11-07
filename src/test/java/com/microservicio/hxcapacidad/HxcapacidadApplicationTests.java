@@ -8,6 +8,7 @@ class HxcapacidadApplicationTests {
 
 	@Test
 	void contextLoads() {
+		//
 	}
 
 }
